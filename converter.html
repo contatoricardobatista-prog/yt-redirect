@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube → App Link</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #f1f1f1;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .container { width: 100%; max-width: 480px; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 2rem;
+    }
+    .logo svg { width: 32px; height: 32px; }
+    .logo span { font-size: 18px; font-weight: 600; }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      color: #f1f1f1;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #ff0000; }
+    input[type="text"]::placeholder { color: #555; }
+    .result-section {
+      margin-top: 1.5rem;
+      display: none;
+    }
+    .result-box {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #ccc;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .result-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 6px;
+      margin-top: 16px;
+    }
+    .copy-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 14px;
+      background: #ff0000;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .copy-btn:active { transform: scale(0.98); background: #cc0000; }
+    .copied {
+      background: #1a7a3a !important;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 1rem;
+    }
+    .badge-ok { background: #1a3a1a; color: #4caf50; }
+    .badge-err { background: #3a1a1a; color: #f44336; display: none; }
+    .open-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 14px;
+      background: transparent;
+      color: #aaa;
+      border: 1px solid #333;
+      border-radius: 12px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .open-btn:active { background: #1a1a1a; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <svg viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="#ff0000"/>
+        <polygon points="13,10 24,16 13,22" fill="white"/>
+      </svg>
+      <span>YouTube → App Link</span>
+    </div>
+
+    <label>Cole o link do vídeo</label>
+    <input
+      type="text"
+      id="ytInput"
+      placeholder="https://youtu.be/... ou youtube.com/watch?v=..."
+      oninput="convert()"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    />
+
+    <div id="errBadge" class="badge badge-err">Link inválido</div>
+
+    <div class="result-section" id="resultSection">
+      <div id="okBadge" class="badge badge-ok">✓ Link gerado</div>
+
+      <div class="result-label">Link para usar no Instagram</div>
+      <div class="result-box" id="finalLink"></div>
+      <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copiar link</button>
+      <button class="open-btn" onclick="openLink()">Testar (abrir no YouTube)</button>
+    </div>
+  </div>
+
+  <script>
+    var BASE = 'https://contatoricardobatista-prog.github.io/yt-redirect/';
+    var currentId = '';
+
+    function extractId(url) {
+      url = (url || '').trim();
+      var m;
+      m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (m) return m[1];
+      m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if (m) return m[1];
+      m = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
+      if (m) return m[1];
+      return null;
+    }
+
+    function convert() {
+      var val = document.getElementById('ytInput').value;
+      var id = extractId(val);
+      var resultSection = document.getElementById('resultSection');
+      var errBadge = document.getElementById('errBadge');
+
+      if (!id) {
+        resultSection.style.display = 'none';
+        errBadge.style.display = val.length > 10 ? 'inline-block' : 'none';
+        currentId = '';
+        return;
+      }
+
+      currentId = id;
+      errBadge.style.display = 'none';
+      resultSection.style.display = 'block';
+      document.getElementById('finalLink').textContent = BASE + '?v=' + id;
+      var btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copiar link';
+      btn.className = 'copy-btn';
+    }
+
+    function copyLink() {
+      if (!currentId) return;
+      var link = BASE + '?v=' + currentId;
+      var btn = document.getElementById('copyBtn');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(function() {
+          btn.textContent = '✓ Copiado!';
+          btn.className = 'copy-btn copied';
+          setTimeout(function() {
+            btn.textContent = 'Copiar link';
+            btn.className = 'copy-btn';
+          }, 2000);
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = link;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✓ Copiado!';
+        btn.className = 'copy-btn copied';
+        setTimeout(function() {
+          btn.textContent = 'Copiar link';
+          btn.className = 'copy-btn';
+        }, 2000);
+      }
+    }
+
+    function openLink() {
+      if (!currentId) return;
+      window.open(BASE + '?v=' + currentId, '_blank');
+    }
+  </script>
+</body>
+</html>
