@@ -5,32 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Redirecionando...</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #aaa;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      margin: 0;
-      background: #f9f9f9;
-      color: #555;
     }
-    .box {
-      text-align: center;
-      padding: 2rem;
-    }
+    .box { text-align: center; padding: 2rem; }
     .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid #e0e0e0;
+      width: 36px; height: 36px;
+      border: 3px solid #333;
       border-top-color: #ff0000;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin: 0 auto 1rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    p { margin: 0; font-size: 15px; }
-    a { color: #ff0000; text-decoration: none; font-size: 14px; margin-top: 1rem; display: inline-block; }
+    p { font-size: 15px; }
+    a { color: #ff0000; font-size: 13px; margin-top: 1rem; display: inline-block; }
   </style>
 </head>
 <body>
@@ -41,36 +37,84 @@
   </div>
 
   <script>
-    (function () {
-      var params = new URLSearchParams(window.location.search);
-      var v = params.get('v');
+    var SUPABASE_URL = 'https://tbkktmoyhgsrvegzjqgw.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_wJca9xw_0gYrutgXd6VqYQ_tz0lo4_A';
 
-      if (!v) {
-        window.location.href = 'https://www.youtube.com';
-        return;
-      }
+    var params = new URLSearchParams(window.location.search);
+    var videoId = params.get('v');
 
-      var fallback = 'https://www.youtube.com/watch?v=' + v;
+    if (!videoId) {
+      window.location.href = 'https://www.youtube.com';
+    } else {
+      var fallback = 'https://www.youtube.com/watch?v=' + videoId;
       var ua = navigator.userAgent;
+      var device = /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
+      var referrer = document.referrer || 'direct';
 
-      var fallbackLink = document.getElementById('fallbackLink');
-      fallbackLink.href = fallback;
+      document.getElementById('fallbackLink').href = fallback;
 
-      var timer = setTimeout(function () {
-        fallbackLink.style.display = 'inline-block';
+      // Tracking fire-and-forget (não bloqueia o redirect)
+      trackClick(videoId, device, referrer);
+
+      // Redirect após 1.5s
+      var timer = setTimeout(function() {
+        document.getElementById('fallbackLink').style.display = 'inline-block';
         window.location.href = fallback;
       }, 1500);
 
-      if (/iPhone|iPad|iPod/.test(ua)) {
-        window.location.href = 'youtube://watch?v=' + v;
-      } else if (/Android/.test(ua)) {
-        window.location.href = 'intent://watch?v=' + v +
+      if (device === 'iOS') {
+        window.location.href = 'youtube://watch?v=' + videoId;
+      } else if (device === 'Android') {
+        window.location.href = 'intent://watch?v=' + videoId +
           '#Intent;scheme=vnd.youtube;package=com.google.android.youtube;end';
       } else {
         clearTimeout(timer);
         window.location.href = fallback;
       }
-    })();
+    }
+
+    function trackClick(videoId, device, referrer) {
+      // Busca geolocalização e registra o clique
+      fetch('https://ipapi.co/json/')
+        .then(function(r) { return r.json(); })
+        .then(function(geo) {
+          return fetch(SUPABASE_URL + '/rest/v1/clicks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_KEY,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              video_id: videoId,
+              device: device,
+              referrer: referrer,
+              country: geo.country_name || 'Desconhecido',
+              city: geo.city || 'Desconhecido'
+            })
+          });
+        })
+        .catch(function() {
+          // Se geo falhar, registra sem localização
+          fetch(SUPABASE_URL + '/rest/v1/clicks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_KEY,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              video_id: videoId,
+              device: device,
+              referrer: referrer,
+              country: 'Desconhecido',
+              city: 'Desconhecido'
+            })
+          }).catch(function() {});
+        });
+    }
   </script>
 </body>
 </html>
