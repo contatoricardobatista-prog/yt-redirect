@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — YouTube Redirect</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #f1f1f1; min-height: 100vh; }
+
+    /* Login */
+    #loginScreen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 2rem;
+    }
+    .login-box {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 16px;
+      padding: 2rem; width: 100%; max-width: 360px;
+    }
+    .login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+    .login-logo svg { width: 28px; height: 28px; }
+    .login-logo span { font-size: 16px; font-weight: 600; }
+    .login-box label { font-size: 13px; color: #888; display: block; margin-bottom: 6px; }
+    .login-box input {
+      width: 100%; padding: 12px 14px; background: #0f0f0f;
+      border: 1px solid #2a2a2a; border-radius: 10px; color: #f1f1f1;
+      font-size: 15px; outline: none; margin-bottom: 12px;
+    }
+    .login-box input:focus { border-color: #ff0000; }
+    .login-btn {
+      width: 100%; padding: 13px; background: #ff0000; color: #fff;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .login-btn:hover { background: #cc0000; }
+    .login-error { color: #ff4444; font-size: 13px; margin-top: 8px; display: none; }
+
+    /* Dashboard */
+    #dashboard { display: none; padding: 1.5rem 1rem; max-width: 800px; margin: 0 auto; }
+    .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px; }
+    .dash-title { display: flex; align-items: center; gap: 10px; }
+    .dash-title svg { width: 24px; height: 24px; }
+    .dash-title span { font-size: 17px; font-weight: 600; }
+    .logout-btn { font-size: 13px; color: #666; background: none; border: 1px solid #2a2a2a; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+    .logout-btn:hover { color: #f1f1f1; border-color: #444; }
+
+    /* Cards */
+    .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+    .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1rem; }
+    .card-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+    .card-value { font-size: 28px; font-weight: 700; color: #f1f1f1; }
+    .card-sub { font-size: 12px; color: #555; margin-top: 4px; }
+
+    /* Seções */
+    .section { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+    .section-title { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    canvas { max-height: 200px; }
+
+    /* Tabela vídeos */
+    .video-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .video-table th { color: #555; font-weight: 500; text-align: left; padding: 6px 0; border-bottom: 1px solid #222; }
+    .video-table td { padding: 8px 0; border-bottom: 1px solid #1a1a1a; color: #ccc; vertical-align: middle; }
+    .video-table td:last-child { text-align: right; }
+    .video-link { color: #ff4444; text-decoration: none; font-family: monospace; font-size: 12px; }
+    .video-link:hover { color: #ff6666; }
+    .click-badge { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 20px; padding: 2px 10px; font-size: 12px; color: #aaa; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 3rem; color: #555; font-size: 14px; }
+    .spinner-sm { width: 24px; height: 24px; border: 2px solid #333; border-top-color: #ff0000; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Periodo */
+    .periodo-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .periodo-btn { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #2a2a2a; background: transparent; color: #666; cursor: pointer; transition: all 0.2s; }
+    .periodo-btn.active { background: #ff0000; color: #fff; border-color: #ff0000; }
+  </style>
+</head>
+<body>
+
+<!-- Tela de Login -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="7" fill="#ff0000"/>
+        <polygon points="11,9 21,14 11,19" fill="white"/>
+      </svg>
+      <span>Analytics</span>
+    </div>
+    <label>Senha de acesso</label>
+    <input type="password" id="passwordInput" placeholder="Digite sua senha" />
+    <div class="login-error" id="loginError">Senha incorreta.</div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="dash-header">
+    <div class="dash-title">
+      <svg viewBox="0 0 24 24" fill="none">
+        <rect width="24" height="24" rx="6" fill="#ff0000"/>
+        <polygon points="9,7 18,12 9,17" fill="white"/>
+      </svg>
+      <span>YouTube Analytics</span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sair</button>
+  </div>
+
+  <div id="loadingState" class="loading">
+    <div class="spinner-sm"></div>
+    Carregando dados...
+  </div>
+
+  <div id="dashContent" style="display:none">
+    <!-- Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Total de cliques</div>
+        <div class="card-value" id="totalClicks">—</div>
+        <div class="card-sub">todos os tempos</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Cliques hoje</div>
+        <div class="card-value" id="todayClicks">—</div>
+        <div class="card-sub" id="todayDate">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Vídeos únicos</div>
+        <div class="card-value" id="uniqueVideos">—</div>
+        <div class="card-sub">com cliques registrados</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Países</div>
+        <div class="card-value" id="uniqueCountries">—</div>
+        <div class="card-sub">diferentes</div>
+      </div>
+    </div>
+
+    <!-- Cliques por dia -->
+    <div class="section">
+      <div class="section-title">Cliques por dia</div>
+      <div class="periodo-row">
+        <button class="periodo-btn active" onclick="setPeriodo(7, this)">7 dias</button>
+        <button class="periodo-btn" onclick="setPeriodo(30, this)">30 dias</button>
+        <button class="periodo-btn" onclick="setPeriodo(90, this)">90 dias</button>
+      </div>
+      <canvas id="chartDias"></canvas>
+    </div>
+
+    <!-- Top vídeos -->
+    <div class="section">
+      <div class="section-title">Top vídeos</div>
+      <table class="video-table">
+        <thead>
+          <tr>
+            <th>Vídeo</th>
+            <th style="text-align:right">Cliques</th>
+          </tr>
+        </thead>
+        <tbody id="videoTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Device + Origem -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+      <div class="section">
+        <div class="section-title">Dispositivo</div>
+        <canvas id="chartDevice"></canvas>
+      </div>
+      <div class="section">
+        <div class="section-title">Origem</div>
+        <canvas id="chartReferrer"></canvas>
+      </div>
+    </div>
+
+    <!-- Top países -->
+    <div class="section">
+      <div class="section-title">Top países</div>
+      <canvas id="chartCountries"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+var EDGE_URL = 'https://tbkktmoyhgsrvegzjqgw.supabase.co/functions/v1/get-analytics';
+var PASS = 'Ric_2404@';
+var allClicks = [];
+var chartDias, chartDevice, chartReferrer, chartCountries;
+var currentPeriodo = 7;
+
+Chart.defaults.color = '#666';
+Chart.defaults.borderColor = '#222';
+
+function doLogin() {
+  var pwd = document.getElementById('passwordInput').value;
+  if (pwd !== PASS) {
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  loadData();
+}
+
+document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogout() {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('passwordInput').value = '';
+}
+
+function loadData() {
+  document.getElementById('loadingState').style.display = 'block';
+  document.getElementById('dashContent').style.display = 'none';
+
+  fetch(EDGE_URL, {
+    headers: { 'x-dashboard-password': PASS }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    allClicks = data.clicks || [];
+    renderDashboard();
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('dashContent').style.display = 'block';
+  })
+  .catch(function(e) {
+    document.getElementById('loadingState').innerHTML = '<p style="color:#ff4444">Erro ao carregar dados. Verifique se a Edge Function foi publicada.</p>';
+  });
+}
+
+function renderDashboard() {
+  var today = new Date().toISOString().slice(0, 10);
+  var todayClicks = allClicks.filter(function(c) { return c.clicked_at && c.clicked_at.slice(0, 10) === today; });
+  var uniqueVideos = [...new Set(allClicks.map(function(c) { return c.video_id; }))];
+  var uniqueCountries = [...new Set(allClicks.map(function(c) { return c.country; }).filter(Boolean))];
+
+  document.getElementById('totalClicks').textContent = allClicks.length;
+  document.getElementById('todayClicks').textContent = todayClicks.length;
+  document.getElementById('uniqueVideos').textContent = uniqueVideos.length;
+  document.getElementById('uniqueCountries').textContent = uniqueCountries.length;
+  document.getElementById('todayDate').textContent = formatDate(today);
+
+  renderChartDias(currentPeriodo);
+  renderVideoTable();
+  renderChartDevice();
+  renderChartReferrer();
+  renderChartCountries();
+}
+
+function setPeriodo(dias, btn) {
+  currentPeriodo = dias;
+  document.querySelectorAll('.periodo-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderChartDias(dias);
+}
+
+function renderChartDias(dias) {
+  var labels = [], counts = [];
+  for (var i = dias - 1; i >= 0; i--) {
+    var d = new Date(); d.setDate(d.getDate() - i);
+    var dateStr = d.toISOString().slice(0, 10);
+    labels.push(formatDateShort(dateStr));
+    counts.push(allClicks.filter(function(c) { return c.clicked_at && c.clicked_at.slice(0, 10) === dateStr; }).length);
+  }
+  if (chartDias) chartDias.destroy();
+  chartDias = new Chart(document.getElementById('chartDias'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{ data: counts, backgroundColor: '#ff0000', borderRadius: 4 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 7, font: { size: 11 } } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+}
+
+function renderVideoTable() {
+  var counts = {};
+  allClicks.forEach(function(c) { counts[c.video_id] = (counts[c.video_id] || 0) + 1; });
+  var sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
+  var tbody = document.getElementById('videoTable');
+  tbody.innerHTML = sorted.map(function(v) {
+    return '<tr><td><a class="video-link" href="https://youtube.com/watch?v=' + v[0] + '" target="_blank">' + v[0] + '</a></td><td><span class="click-badge">' + v[1] + '</span></td></tr>';
+  }).join('') || '<tr><td colspan="2" style="color:#555;padding:1rem 0">Nenhum clique ainda</td></tr>';
+}
+
+function renderChartDevice() {
+  var counts = {};
+  allClicks.forEach(function(c) { if (c.device) counts[c.device] = (counts[c.device] || 0) + 1; });
+  if (chartDevice) chartDevice.destroy();
+  chartDevice = new Chart(document.getElementById('chartDevice'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(counts),
+      datasets: [{ data: Object.values(counts), backgroundColor: ['#ff0000', '#ff6600', '#ffaa00'], borderWidth: 0 }]
+    },
+    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } } }, cutout: '65%' }
+  });
+}
+
+function renderChartReferrer() {
+  var counts = {};
+  allClicks.forEach(function(c) {
+    var ref = c.referrer || 'direct';
+    if (ref.includes('instagram')) ref = 'Instagram';
+    else if (ref.includes('whatsapp')) ref = 'WhatsApp';
+    else if (ref.includes('youtube')) ref = 'YouTube';
+    else if (ref === 'direct' || ref === '') ref = 'Direct';
+    else ref = 'Outro';
+    counts[ref] = (counts[ref] || 0) + 1;
+  });
+  if (chartReferrer) chartReferrer.destroy();
+  chartReferrer = new Chart(document.getElementById('chartReferrer'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(counts),
+      datasets: [{ data: Object.values(counts), backgroundColor: ['#e1306c', '#25d366', '#ff0000', '#555', '#888'], borderWidth: 0 }]
+    },
+    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } } }, cutout: '65%' }
+  });
+}
+
+function renderChartCountries() {
+  var counts = {};
+  allClicks.forEach(function(c) { if (c.country && c.country !== 'Desconhecido') counts[c.country] = (counts[c.country] || 0) + 1; });
+  var sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8);
+  if (chartCountries) chartCountries.destroy();
+  chartCountries = new Chart(document.getElementById('chartCountries'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(function(v) { return v[0]; }),
+      datasets: [{ data: sorted.map(function(v) { return v[1]; }), backgroundColor: '#ff0000', borderRadius: 4 }]
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } }, y: { ticks: { font: { size: 11 } } } } }
+  });
+}
+
+function formatDate(str) {
+  var d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function formatDateShort(str) {
+  var d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+</script>
+</body>
+</html>
