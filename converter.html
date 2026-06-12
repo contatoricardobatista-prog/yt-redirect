@@ -44,6 +44,17 @@
     }
     input[type="text"]:focus { border-color: #ff0000; }
     input[type="text"]::placeholder { color: #555; }
+
+    /* Origem */
+    .origem-label { margin-top: 1.5rem; }
+    .origem-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .origem-btn {
+      font-size: 13px; padding: 8px 14px; border-radius: 20px;
+      border: 1px solid #333; background: transparent; color: #888;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .origem-btn.active { background: #ff0000; color: #fff; border-color: #ff0000; }
+
     .result-section {
       margin-top: 1.5rem;
       display: none;
@@ -126,6 +137,14 @@
       spellcheck="false"
     />
 
+    <label class="origem-label">Onde vai postar?</label>
+    <div class="origem-row" id="origemRow">
+      <button class="origem-btn active" data-src="ig"       onclick="setOrigem(this)">Instagram</button>
+      <button class="origem-btn"        data-src="ig_story" onclick="setOrigem(this)">Stories</button>
+      <button class="origem-btn"        data-src="wpp"      onclick="setOrigem(this)">WhatsApp</button>
+      <button class="origem-btn"        data-src=""         onclick="setOrigem(this)">Outro</button>
+    </div>
+
     <div id="errBadge" class="badge badge-err">Link inválido</div>
 
     <div class="result-section" id="resultSection">
@@ -141,6 +160,7 @@
   <script>
     var BASE = 'https://contatoricardobatista-prog.github.io/yt-redirect/';
     var currentId = '';
+    var currentSrc = 'ig';
 
     function extractId(url) {
       url = (url || '').trim();
@@ -152,6 +172,20 @@
       m = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
       if (m) return m[1];
       return null;
+    }
+
+    function buildLink(id) {
+      var link = BASE + '?v=' + id;
+      if (currentSrc) link += '&src=' + currentSrc;
+      return link;
+    }
+
+    function setOrigem(btn) {
+      currentSrc = btn.getAttribute('data-src');
+      var btns = document.querySelectorAll('.origem-btn');
+      for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+      btn.classList.add('active');
+      convert();
     }
 
     function convert() {
@@ -170,7 +204,7 @@
       currentId = id;
       errBadge.style.display = 'none';
       resultSection.style.display = 'block';
-      document.getElementById('finalLink').textContent = BASE + '?v=' + id;
+      document.getElementById('finalLink').textContent = buildLink(id);
       var btn = document.getElementById('copyBtn');
       btn.textContent = 'Copiar link';
       btn.className = 'copy-btn';
@@ -178,7 +212,7 @@
 
     function copyLink() {
       if (!currentId) return;
-      var link = BASE + '?v=' + currentId;
+      var link = buildLink(currentId);
       var btn = document.getElementById('copyBtn');
       if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(function() {
@@ -207,7 +241,7 @@
 
     function openLink() {
       if (!currentId) return;
-      window.open(BASE + '?v=' + currentId, '_blank');
+      window.open(buildLink(currentId), '_blank');
     }
   </script>
 </body>
