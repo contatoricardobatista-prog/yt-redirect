@@ -185,7 +185,7 @@
 </div>
 
 <script>
-var EDGE_URL = 'https://tbkktmoyhgsrvegzjqgw.supabase.co/functions/v1/get-analytics';
+var EDGE_URL = 'https://tbkktmoyhgsrvegzjqgw.supabase.co/functions/v1/rapid-processor';
 var PASS = 'Ric_2404@';
 var allClicks = [];
 var chartDias, chartDevice, chartReferrer, chartCountries;
@@ -306,10 +306,11 @@ function renderChartDevice() {
 function renderChartReferrer() {
   var counts = {};
   allClicks.forEach(function(c) {
-    var ref = c.referrer || 'direct';
-    if (ref.includes('instagram')) ref = 'Instagram';
-    else if (ref.includes('whatsapp')) ref = 'WhatsApp';
-    else if (ref.includes('youtube')) ref = 'YouTube';
+    var ref = (c.referrer || 'direct').toLowerCase();
+    // Códigos do marcador ?src= (gerados pelo converter) + fallback pelo referrer
+    if (ref === 'ig' || ref === 'ig_story' || ref === 'ig_post' || ref.indexOf('instagram') !== -1) ref = 'Instagram';
+    else if (ref === 'wpp' || ref.indexOf('whatsapp') !== -1) ref = 'WhatsApp';
+    else if (ref === 'yt' || ref.indexOf('youtube') !== -1) ref = 'YouTube';
     else if (ref === 'direct' || ref === '') ref = 'Direct';
     else ref = 'Outro';
     counts[ref] = (counts[ref] || 0) + 1;
